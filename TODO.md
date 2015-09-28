@@ -9,6 +9,12 @@
  - Live Docs
  - Filter Cache (bitmap, Sorted Ints, Roaring Bitmaps)
 
+Заметки:
+
+Недостатки VInt - ухудшает статистику предсказателя cpu, нельзя распаковать конкретное значение по индексу
+
+Links:
+
 https://www.elastic.co/blog/frame-of-reference-and-roaring-bitmaps
 
 http://blog.mikemccandless.com/2010/08/lucene-performance-with-pfordelta-codec.html
