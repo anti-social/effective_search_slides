@@ -25,6 +25,8 @@ http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-bill
 
 http://www.slideshare.net/lucenerevolution/what-is-inaluceneagrandfinal
 
+http://blog.jpountz.net/post/33247161884/efficient-compressed-stored-fields-with-lucene
+
 http://roaringbitmap.org/
 
 https://en.wikipedia.org/wiki/Skip_list
