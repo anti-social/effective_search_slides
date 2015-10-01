@@ -27,6 +27,8 @@ http://www.slideshare.net/lucenerevolution/what-is-inaluceneagrandfinal
 
 http://blog.jpountz.net/post/33247161884/efficient-compressed-stored-fields-with-lucene
 
+http://blog.jpountz.net/post/41301889664/putting-term-vectors-on-a-diet
+
 http://roaringbitmap.org/
 
 https://en.wikipedia.org/wiki/Skip_list
