@@ -7,6 +7,7 @@
  - Postings List (сжатие данных, Delta Codec, VInt, Frame Of Referenceб Bit Packing)
  - Skip List
  - Live Docs
+ - Stored fields
  - Filter Cache (bitmap, Sorted Ints, Roaring Bitmaps)
 
 Заметки:
@@ -26,6 +27,8 @@ http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-bill
 http://www.slideshare.net/lucenerevolution/what-is-inaluceneagrandfinal
 
 http://blog.jpountz.net/post/33247161884/efficient-compressed-stored-fields-with-lucene
+
+http://blog.jpountz.net/post/35667727458/stored-fields-compression-in-lucene-41
 
 http://blog.jpountz.net/post/41301889664/putting-term-vectors-on-a-diet
 
