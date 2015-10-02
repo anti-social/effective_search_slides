@@ -7,6 +7,7 @@
  - Postings List (сжатие данных, Delta Codec, VInt, Frame Of Referenceб Bit Packing)
  - Skip List
  - Live Docs
+ - Numeric Range (Trie)
  - Stored fields
  - Filter Cache (bitmap, Sorted Ints, Roaring Bitmaps)
 
@@ -25,6 +26,8 @@ http://hackerlabs.org/blog/2011/10/01/hacking-lucene-the-index-format/
 http://lemire.me/blog/archives/2012/09/12/fast-integer-compression-decoding-billions-of-integers-per-second/
 
 http://www.slideshare.net/lucenerevolution/what-is-inaluceneagrandfinal
+
+http://blog.parsely.com/post/1691/lucene/
 
 http://blog.jpountz.net/post/33247161884/efficient-compressed-stored-fields-with-lucene
 
