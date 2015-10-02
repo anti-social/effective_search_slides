@@ -4,7 +4,7 @@
  - Hash Map, Doc Ordinals, Frequencies, Positions
  - Inverted Index
  - FST
- - Postings List (сжатие данных, Delta Codec, VInt, Frame Of Referenceб Bit Packing)
+ - Postings List (сжатие данных, Delta Codec, VInt, Frame Of Reference, Bit Packing)
  - Skip List
  - Live Docs
  - Numeric Range (Trie)
