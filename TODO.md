@@ -10,6 +10,7 @@
  - Numeric Range (Trie)
  - Sorting, Aggregations, Scripts and Uninverted Index (Fielddata, Doc Values, Packed Ints)
  - Stored fields
+ - Codecs (SimpleTextCodec)
  - Filter Cache (bitmap, Sorted Ints, Roaring Bitmaps)
 
 Заметки:
@@ -35,6 +36,8 @@ http://blog.jpountz.net/post/33247161884/efficient-compressed-stored-fields-with
 http://blog.jpountz.net/post/35667727458/stored-fields-compression-in-lucene-41
 
 http://blog.jpountz.net/post/41301889664/putting-term-vectors-on-a-diet
+
+http://blog.mikemccandless.com/2010/10/lucenes-simpletext-codec.html
 
 http://roaringbitmap.org/
 
