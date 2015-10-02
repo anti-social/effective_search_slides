@@ -8,7 +8,7 @@
  - Skip List
  - Live Docs
  - Numeric Range (Trie)
- - Sorting, Aggregations, Scripts and Uninverted Index
+ - Sorting, Aggregations, Scripts and Uninverted Index (Fielddata, Doc Values)
  - Stored fields
  - Filter Cache (bitmap, Sorted Ints, Roaring Bitmaps)
 
