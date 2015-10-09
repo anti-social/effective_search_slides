@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Inside Lucene</title>
+
+    <link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/reveal.css">
+	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/theme/black.css" id="theme">
+	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/lib/css/zenburn.css" id="theme">
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <h1>Inside Lucene</h1>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Создаем свой индекс
+              ###Требования
+
+              * Сложность поиска терма - O(1)
+              * Wildcard запросы
+              * Поиск по фразе
+              * Минимальный размер
+              * Неизменяемый индекс (write only)
+            </script>
+            <!--
+                Размер индекса очень важен, так как улучшает использование дискового кеша.
+                Процессоры реально быстрые - раскодировать данные в памяти может оказаться бестрее, чем скопировать их.
+                Для упрощения примем, что наш индекс должен быть неизменяемым
+                (иммутабельность позволяет активно использовать кеширование).
+              -->
+          </section>
+          <section>
+            <h2>Inverted Index</h2>
+            <pre><code class="python">
+index = {
+    "brown": ["doc1", "doc2"],
+    "fox": ["doc1"],
+    "the": ["doc1", "doc2", "doc3"],
+}
+            </code></pre>
+          </section>
+          <section>
+            <h2>Document Ordinals</h2>
+            <pre><code class="hlpython">
+index = {
+    "brown": [0, 1],
+    "fox": [0],
+    "the": [0, 1, 2],
+}
+ordinals = ["doc1", "doc2", "doc3"]
+            </code></pre>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Compress Postings List
+              ### Delta + Variable Integers
+            </script>
+            <pre><code class="python">
+[2, 8, 9, 10, 27, 35, 62]
+[]
+            </code></pre>
+            <script type="text/template">
+              Variable Integers - старший бит байта кодирует есть ли продолжение.
+              Закодированный Integer занимает от 1 до 5 байт.
+
+              Минусы:
+
+              * Плохо работает с предсказателем переходов
+              * Минимальный размер - 1 байт
+              * Нельзя раскодировать произвольное значение
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Frame of Reference
+            </script
+            <pre><code class="python">
+                [2, 8, 9, 10, 27, 35, 62]
+                (3, [2, 6, 1, 1]), (5, [17, 8, 27])
+            </code></pre>
+            <script type="text/template">
+              * Каждое значение внутри блока имеет фиксированный размер
+              * Единственное большое значение увеличивает размер для всего блока
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Patched Frame of Reference
+            </script>
+            <pre><code class="python">
+                [2, 8, 9, 10, 27, 35, 62]
+                (2, [0, 6, 1, 1]), ([17, 8, 27])
+            </code></pre>
+            <script type="text/template">
+              * Блок состоит из 256 значений
+              * Значения, которые выбивают
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Filter Cache
+
+              * Должны ускорять выполнение часто используемых фильтров
+              * Ключ - это пара (filter, segment)
+              * Степень сжатия не так важна - скорость важнее
+            </script>
+            <!--
+                Я здесь написал "должны", так как не обязательно они будут ускорять.
+                Важно кешировать действительно часто используемые фильтры, иначе
+                записи в кеше будут постоянно вытеснять друг друга.
+                Записи привязаны к сегментам, благодаря иммутабельности последних,
+                запись в кеше всегда актуальна.
+                Хоть сжатие не так важно как для индекса, но все же чем меньше будет
+                занимать запись в кеше, тем больше записей мы можем хранить. Нужен компромис.n
+              -->
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Integer Array
+
+              * Самый простой способ
+              * 1 миллион документов занимает 4Мб
+              * Нужно что-то более эфективное по памяти
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Bitmaps
+
+              * Лучший способ для "плотных" фильтров
+              * 1 миллион документов занимает 125Кб
+              * Неэфективен для сильно разреженых фильтров
+              * Solr использовал оба подхода
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Roaring Bitmaps
+
+              * Взял лучшее из обоих способов
+              * Разбивает данные на блоки и кодирует каждый блок лучшим способом
+              * Разбивает на блоки по 16 старшим битам
+              * Внутри блока сохраняет только 16 младших бит
+              * Если в блоке меньше 4096 значений использует массив, иначе bitmap
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Roaring Bitmaps
+
+              Тут пример
+            </script>
+          </section>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Finite State Transducer
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Numeric Fields
+
+            * Использует префиксное дерево - Trie
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Live Docs
+
+            * Единственная мутабельная часть сегмента
+            * Внутри Bitmap с пропусками
+          </script>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Codecs
+
+              Кодеки в Lucene - это плагины
+
+              <pre><code class="groovy">
+def writerConfig = new IndexWriterConfig(new StandardAnalyzer())
+writerConfig.setUseCompoundFile(false)
+writerConfig.setCodec(new SimpleTextCodec())
+
+def writer = new IndexWriter(dir, writerConfig)
+
+def doc = new Document()
+doc.add(new StringField('id', '1', Field.Store.YES))
+doc.add(new IntField('status', 1, Field.Store.NO))
+doc.add(new NumericDocValuesField('status', 1))
+doc.add(new TextField('name', 'the brown fox', Field.Store.NO))
+writer.addDocument(doc)
+// add another documents ...
+
+writer.close()
+              </code></pre>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Codecs
+
+              <pre><code class="bash">
+$ cat data/_0.pst 
+...
+field name
+  term brown
+    doc 0
+      freq 1
+      pos 1
+    doc 1
+      freq 1
+      pos 1
+  term crown
+    doc 2
+      freq 1
+      pos 1
+              </code></pre>
+            </script>
+          </section>
+        </section>
+
+        <section>
+          I heard you like aggregations
+          so I put an aggregation into aggregation
+          so you can aggregate while you aggretate
+        </section>
+      </div>
+    </div>
+
+    <script src="http://lab.hakim.se/reveal-js/lib/js/head.min.js"></script>
+	<script src="http://lab.hakim.se/reveal-js/js/reveal.js"></script>
+    <script>
+	  // Full list of configuration options available at:
+	  // https://github.com/hakimel/reveal.js#configuration
+	  Reveal.initialize({
+	    controls: true,
+	    progress: true,
+        history: true,
+        center: true,
+        transition: 'slide', // none/fade/slide/convex/concave/zoom
+        // Optional reveal.js plugins
+        dependencies: [
+	      { src: 'http://lab.hakim.se/reveal-js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'http://lab.hakim.se/reveal-js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'http://lab.hakim.se/reveal-js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'http://lab.hakim.se/reveal-js/plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'http://lab.hakim.se/reveal-js/plugin/zoom-js/zoom.js', async: true },
+          { src: 'http://lab.hakim.se/reveal-js/plugin/notes/notes.js', async: true }
+        ]
+      });
+	</script>
+  </body>
+</html>
