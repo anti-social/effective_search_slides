@@ -42,3 +42,5 @@ http://blog.mikemccandless.com/2010/10/lucenes-simpletext-codec.html
 http://roaringbitmap.org/
 
 https://en.wikipedia.org/wiki/Skip_list
+
+https://idea.popcount.org/2012-07-25-introduction-to-hamt/
