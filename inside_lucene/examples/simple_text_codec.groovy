@@ -18,7 +18,9 @@ import java.nio.file.Paths
 
 
 def dataPath = Paths.get('data')
-dataPath.deleteDir()
+if (dataPath.toFile().exists()) {
+    dataPath.toFile().deleteDir()
+}
 
 def dir = FSDirectory.open(dataPath)
 
@@ -45,7 +47,7 @@ doc = new Document()
 doc.add(new StringField('id', '3', Field.Store.YES))
 doc.add(new IntField('status', 2, Field.Store.NO))
 doc.add(new NumericDocValuesField('status', 2))
-doc.add(new TextField('name', 'the crown of king', Field.Store.NO))
+doc.add(new TextField('name', 'fox fox', Field.Store.NO))
 writer.addDocument(doc)
 
 writer.close()

@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/reveal.css">
 	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/theme/black.css" id="theme">
 	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/lib/css/zenburn.css" id="theme">
+    <style>
+      .reveal ul {
+        display: block;
+        margin-left: 2em;
+      }
+    </style>
   </head>
   <body>
     <div class="reveal">
@@ -18,14 +24,12 @@
         <section>
           <section data-markdown>
             <script type="text/template">
-              ## Создаем свой индекс
-              ###Требования
+              ##Full Text Index
 
               * Сложность поиска терма - O(1)
               * Wildcard запросы
               * Поиск по фразе
               * Минимальный размер
-              * Неизменяемый индекс (write only)
             </script>
             <!--
                 Размер индекса очень важен, так как улучшает использование дискового кеша.
@@ -34,37 +38,127 @@
                 (иммутабельность позволяет активно использовать кеширование).
               -->
           </section>
-          <section>
-            <h2>Inverted Index</h2>
-            <pre><code class="python">
-index = {
+        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Inverted Index
+              <pre><code class="python">
+docs = [
+    {"id": "doc1", "status": 2, "name": "the brown fox"},
+    {"id": "doc2", "status": 0, "name": "the brown"},
+    {"id": "doc3", "name": "the the"},
+]
+index["name"] = {
     "brown": ["doc1", "doc2"],
     "fox": ["doc1"],
     "the": ["doc1", "doc2", "doc3"],
 }
-            </code></pre>
+              </code></pre>
+            </script>
           </section>
-          <section>
-            <h2>Document Ordinals</h2>
-            <pre><code class="hlpython">
-index = {
+          <section data-markdown>
+            <script type="text/template">
+              ## Document Ordinals
+
+              <pre><code class="hlpython">
+index["name"] = {
     "brown": [0, 1],
     "fox": [0],
     "the": [0, 1, 2],
 }
 ordinals = ["doc1", "doc2", "doc3"]
-            </code></pre>
+              </code></pre>
+            </script>
           </section>
           <section data-markdown>
             <script type="text/template">
-              ## Compress Postings List
-              ### Delta + Variable Integers
+              ## Frequency & Positions
+
+              * Скоринг
+              * Поиск по фразе
+
+              <pre><code class="hlpython">
+index["name"] = {
+    "brown": ([0, 1], [1, 1], [[1], [1]]),
+    "fox": ([0], [1], [[2]]),
+    "the": ([0, 1, 2], [1, 1, 2], [[0], [0], [0, 1]])
+}
+ordinals = ["doc1", "doc2", "doc3"]
+              </code></pre>
             </script>
-            <pre><code class="python">
-[2, 8, 9, 10, 27, 35, 62]
-[]
-            </code></pre>
+          </section>
+          <section data-markdown>
             <script type="text/template">
+              ## Uninverted index
+
+              * Сортировка
+              * Скрипты
+              * Агрегации
+
+              Раньше FieldCache индекс загружался в память
+
+              <pre><code class="hlpython">
+doc_values["status"] = {
+    0: 2,
+    1: 0,
+    2: None,
+}
+              </code></pre>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Term vectors
+
+              * Инвертрованный индекс для каждого документа
+              * Хранит частоту терма, позиции, смещения в тексте
+              * Используется для подсветки
+
+              <pre><code class="hlpython">
+vectors = {
+    0: {"name": {
+        "brown": (1, [2], [[4, 9]]),
+        "fox": (1, [3], [[10, 13]]),
+        "the": (1, [1], [[0, 3]]),
+    }},
+    1: {"name": {
+        "brown": (1, [2], [[4, 9]]),
+        "the": (1, [1], [[0, 3]]),
+    }},
+    2: {"name": {
+        "the": (1, [1, 2], [[0, 3], [4, 7]]),
+    }},
+}
+              </code></pre>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Stored
+
+              * Оригинальное значение поля
+              * Сжимается LZ4 или GZIP блоками по 16Кб
+              * Распаковывается весь блок
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Compress Postings List
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ### Delta + VInt
+
+              <pre><code class="python">
+                  [2, 8, 9, 10, 27, 35, 62]
+                  [2, 6, 1, 1, 17, 8, 27]
+              </code></pre>
+
               Variable Integers - старший бит байта кодирует есть ли продолжение.
               Закодированный Integer занимает от 1 до 5 байт.
 
@@ -78,27 +172,27 @@ ordinals = ["doc1", "doc2", "doc3"]
           <section data-markdown>
             <script type="text/template">
               ### Frame of Reference
-            </script
-            <pre><code class="python">
+
+              <pre><code class="python">
                 [2, 8, 9, 10, 27, 35, 62]
-                (3, [2, 6, 1, 1]), (5, [17, 8, 27])
-            </code></pre>
-            <script type="text/template">
-              * Каждое значение внутри блока имеет фиксированный размер
-              * Единственное большое значение увеличивает размер для всего блока
+                (6, 2, [0, 6, 1, 1, 17, 8, 27])
+              </code></pre>
+
+              * Фиксированный размер
+              * Единственное большое значение увеличивает размер
             </script>
           </section>
           <section data-markdown>
             <script type="text/template">
               ### Patched Frame of Reference
-            </script>
-            <pre><code class="python">
+
+              <pre><code class="python">
                 [2, 8, 9, 10, 27, 35, 62]
-                (2, [0, 6, 1, 1]), ([17, 8, 27])
-            </code></pre>
-            <script type="text/template">
+                (3, 2, [0, 6, 1, 1]), (5, 17, [0, 8, 27])
+              </code></pre>
+
               * Блок состоит из 256 значений
-              * Значения, которые выбивают
+              * Большие значения влияют только на один блок
             </script>
           </section>
         </section>
@@ -124,7 +218,7 @@ ordinals = ["doc1", "doc2", "doc3"]
           </section>
           <section data-markdown>
             <script type="text/template">
-              ### Integer Array
+              ### Sorted Integer
 
               * Самый простой способ
               * 1 миллион документов занимает 4Мб
@@ -138,7 +232,6 @@ ordinals = ["doc1", "doc2", "doc3"]
               * Лучший способ для "плотных" фильтров
               * 1 миллион документов занимает 125Кб
               * Неэфективен для сильно разреженых фильтров
-              * Solr использовал оба подхода
             </script>
           </section>
           <section data-markdown>
@@ -146,7 +239,6 @@ ordinals = ["doc1", "doc2", "doc3"]
               ### Roaring Bitmaps
 
               * Взял лучшее из обоих способов
-              * Разбивает данные на блоки и кодирует каждый блок лучшим способом
               * Разбивает на блоки по 16 старшим битам
               * Внутри блока сохраняет только 16 младших бит
               * Если в блоке меньше 4096 значений использует массив, иначе bitmap
@@ -156,32 +248,55 @@ ordinals = ["doc1", "doc2", "doc3"]
             <script type="text/template">
               ### Roaring Bitmaps
 
-              Тут пример
+              <pre><code class="python">
+                [2, 8, 9, 10, 12, 35, 62]
+                [(0, 2), (0, 8), (0, 9), (0, 10), (0, 12), (2, 3), (3, 14)]
+                [(0, 0b0001_0111_0000_0100), (1,), (2, [3]), (3, [14])]
+              </code></pre>
             </script>
           </section>
         </section>
 
-        <section data-markdown>
-          <script type="text/template">
-            ## Finite State Transducer
-          </script>
-        </section>
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Finite State Transducer
 
-        <section data-markdown>
-          <script type="text/template">
-            ## Numeric Fields
+              * Нахождение по ключу за O(1), зависит только от длинны ключа
+              * Поиск ключей по префиксу
+              * Отличное сжатие для естественных языков
 
-            * Использует префиксное дерево - Trie
-          </script>
-        </section>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Finite State Transducer
 
-        <section data-markdown>
-          <script type="text/template">
-            ## Live Docs
+              <pre>
+                0: mop    3: star
+                1: moth   4: stop
+                2: pop    5: top
+              </pre>
 
-            * Единственная мутабельная часть сегмента
-            * Внутри Bitmap с пропусками
-          </script>
+              ![FST](images/numericFST.png)
+            </script>
+          </section>
+
+          <section data-markdown>
+            <script type="text/template">
+              ## Numeric Fields
+
+              * Используют префиксное дерево - Trie
+
+              ![Trie](images/trie.png)
+
+              <pre>
+                423 &lt;= price &lt;= 642
+
+                5 | 44 | 63 | 423 | 641 | 642
+              </pre>
+            </script>
+          </section>
         </section>
 
         <section>
@@ -191,7 +306,7 @@ ordinals = ["doc1", "doc2", "doc3"]
 
               Кодеки в Lucene - это плагины
 
-              <pre><code class="groovy">
+              <pre><code class="python">
 def writerConfig = new IndexWriterConfig(new StandardAnalyzer())
 writerConfig.setUseCompoundFile(false)
 writerConfig.setCodec(new SimpleTextCodec())
@@ -215,7 +330,7 @@ writer.close()
               ## Codecs
 
               <pre><code class="bash">
-$ cat data/_0.pst 
+$ cat data/_0.pst
 ...
 field name
   term brown
@@ -225,44 +340,135 @@ field name
     doc 1
       freq 1
       pos 1
-  term crown
-    doc 2
+  term fox
+    doc 0
       freq 1
-      pos 1
+      pos 0
               </code></pre>
             </script>
           </section>
         </section>
 
         <section>
-          I heard you like aggregations
-          so I put an aggregation into aggregation
-          so you can aggregate while you aggretate
+          <section data-markdown>
+            <script type="text/template">
+              ## Segments
+
+              * Немутабельныe
+              * Документ нельзя удалить
+              * Merges
+              * Compound segments для уменьшения кол-ва открытых файлов
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Live Docs
+
+              * Единственная мутабельная часть сегмента
+              * Внутри Bitmap с пропусками
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Merging Segments
+
+              <iframe width="560" height="315" src="https://www.youtube.com/embed/YOklKW9LJNY" frameborder="0" allowfullscreen></iframe>
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Ranking &amp; Similarity
+
+              * TF - частота терма в документе
+              * tf(t, d) = sqrt(frequency)
+              * IDF - инвертированная частота терма в корпусе
+              * idf(t) = 1 + log(numDocs / (docFreq + 1))
+              * norm = 1 / sqrt(numTerms)
+              * score ~ tf * idf * norm
+              * BM25 - тонкая настройка
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Vector Space Model
+
+              ![Vector](images/vector_query.png)
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Text processing
+
+              * Фильтрация символов (например удаление html)
+              * Разбиение на токены
+              * Морфология (стемминг)
+              * Синонимы
+              * Разделение/объединение (wi fi = wifi = WiFi = wi-fi)
+              * Нижний регистр
+              * Машинное обучение
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+              ## Normalization
+
+              * Snowball - алгоритмический стеммер
+              * Hunspell - медленно
+              * Pymorphy2 - быстро и точно
+            </script>
+          </section>
         </section>
       </div>
     </div>
 
     <script src="http://lab.hakim.se/reveal-js/lib/js/head.min.js"></script>
-	<script src="http://lab.hakim.se/reveal-js/js/reveal.js"></script>
+    <script src="http://lab.hakim.se/reveal-js/js/reveal.js"></script>
     <script>
-	  // Full list of configuration options available at:
-	  // https://github.com/hakimel/reveal.js#configuration
-	  Reveal.initialize({
-	    controls: true,
-	    progress: true,
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: true,
+	progress: true,
         history: true,
         center: true,
         transition: 'slide', // none/fade/slide/convex/concave/zoom
         // Optional reveal.js plugins
         dependencies: [
-	      { src: 'http://lab.hakim.se/reveal-js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
-          { src: 'http://lab.hakim.se/reveal-js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
-          { src: 'http://lab.hakim.se/reveal-js/plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
-          { src: 'http://lab.hakim.se/reveal-js/plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
-          { src: 'http://lab.hakim.se/reveal-js/plugin/zoom-js/zoom.js', async: true },
-          { src: 'http://lab.hakim.se/reveal-js/plugin/notes/notes.js', async: true }
+          {
+            src: 'http://lab.hakim.se/reveal-js/lib/js/classList.js',
+            condition: function() { return !document.body.classList; }
+          },
+          {
+            src: 'http://lab.hakim.se/reveal-js/plugin/markdown/marked.js',
+            condition: function() { return !!document.querySelector( '[data-markdown]' ); }
+          },
+          {
+            src: 'http://lab.hakim.se/reveal-js/plugin/markdown/markdown.js',
+            condition: function() { return !!document.querySelector( '[data-markdown]' ); }
+          },
+          {
+            src: 'http://lab.hakim.se/reveal-js/plugin/highlight/highlight.js',
+            async: true,
+            condition: function() { return !!document.querySelector( 'pre code' ); },
+            callback: function() { hljs.initHighlightingOnLoad(); }
+          },
+          {
+            src: 'http://lab.hakim.se/reveal-js/plugin/zoom-js/zoom.js',
+            async: true
+          },
+          {
+            src: 'http://lab.hakim.se/reveal-js/plugin/notes/notes.js',
+            async: true
+          }
         ]
       });
-	</script>
+      console.log(" * End of init!");
+    </script>
   </body>
 </html>
