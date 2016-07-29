@@ -61,7 +61,7 @@ index["name"] = {
             <script type="text/template">
               ## Document Ordinals
 
-              <pre><code class="hlpython">
+              <pre><code class="python">
 index["name"] = {
     "brown": [0, 1],
     "fox": [0],
@@ -78,7 +78,7 @@ ordinals = ["doc1", "doc2", "doc3"]
               * Скоринг
               * Поиск по фразе
 
-              <pre><code class="hlpython">
+              <pre><code class="python">
 index["name"] = {
     "brown": ([0, 1], [1, 1], [[1], [1]]),
     "fox": ([0], [1], [[2]]),
@@ -98,7 +98,7 @@ ordinals = ["doc1", "doc2", "doc3"]
 
               Раньше FieldCache индекс загружался в память
 
-              <pre><code class="hlpython">
+              <pre><code class="python">
 doc_values["status"] = {
     0: 2,
     1: 0,
@@ -115,7 +115,7 @@ doc_values["status"] = {
               * Хранит частоту терма, позиции, смещения в тексте
               * Используется для подсветки
 
-              <pre><code class="hlpython">
+              <pre><code class="python">
 vectors = {
     0: {"name": {
         "brown": (1, [2], [[4, 9]]),
@@ -455,7 +455,6 @@ field name
           {
             src: 'http://lab.hakim.se/reveal-js/plugin/highlight/highlight.js',
             async: true,
-            condition: function() { return !!document.querySelector( 'pre code' ); },
             callback: function() { hljs.initHighlightingOnLoad(); }
           },
           {
@@ -468,7 +467,6 @@ field name
           }
         ]
       });
-      console.log(" * End of init!");
     </script>
   </body>
 </html>
