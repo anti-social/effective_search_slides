@@ -5,32 +5,133 @@
     <title>Inside Lucene</title>
 
     <link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/reveal.css">
-	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/theme/black.css" id="theme">
-	<link rel="stylesheet" href="http://lab.hakim.se/reveal-js/lib/css/zenburn.css" id="theme">
+	  <link rel="stylesheet" href="http://lab.hakim.se/reveal-js/css/theme/black.css" id="theme">
+	  <link rel="stylesheet" href="http://lab.hakim.se/reveal-js/lib/css/zenburn.css" id="theme">
     <style>
+      .reveal p {
+        text-align: left;
+      }
       .reveal ul {
         display: block;
         margin-left: 2em;
+      }
+      .reveal section img {
+        background-color: white;
       }
     </style>
   </head>
   <body>
     <div class="reveal">
       <div class="slides">
-        <section>
-          <h1>Inside Lucene</h1>
+        <section data-markdown>
+          # Effective search
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ##Full Text Index
+            # Why not SQL?
+          </section>
+          <section data-markdown>
+            * Иногда sql медленный, очень медленный
+            * MVCC - многоверсионность
+            * ACID - атомарнось, согласованность, изоляция, устойчивость
+          </section>
+          <section data-markdown>
+            ## MVCC
 
-              * Сложность поиска терма - O(1)
-              * Wildcard запросы
-              * Поиск по фразе
-              * Минимальный размер
+            * Записи физически не удаляются из базы
+            * Любой запрос выполняется в транзакции, xid_current (32 bit)
+            * Каждая запись имеет 2 дополнительных поля: xmin, xmax
+            * xmin - номер транзакции вставившей запись
+            * xmax - транзакция удалившая запись
+          </section>
+          <section data-markdown>
+            ## VACUUM
+
+            * Процесс autovacuum проставляет xmin = FREEZE
+            * И удаляет мертвые версии записей
+            * Это нужно для избежания xid wraparound
+            * Также отмечает страницы в visibility map,
+              позволяя index only scan
+          </section>
+          <section data-markdown>
+            ## XID WRAPAROUND
+
+            ![xid wraparound](images/xid_wraparound.png)
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ## ACID
+
+            Каждая запись проверяется на "видимость":
+
+            <pre><code class="c">
+/*
+ * ((Xmin == my-transaction &&
+ *		(Xmax is null
+ *		 [|| Xmax != my-transaction)])
+ * ||
+ *
+ * (Xmin is committed &&
+ *		(Xmax is null ||
+ *			(Xmax != my-transaction &&
+ *			 Xmax is not committed)))
+ */
+            </code></pre>
             </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ## Slow SQL
+
+            <pre><code class="sql">
+              SELECT count(1) FROM product
+            </code></pre>
+            <pre><code class="sql">
+              SELECT * FROM product OFFSET 10_000_000 LIMIT 10
+            </code></pre>
+            <pre><code class="sql">
+              SELECT * FROM product ORDER BY random() LIMIT 10
+            </code></pre>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ## Pagination
+
+            * Ограничиваем глубину пагинации
+            * Определяем только наличие следующей страницы
+            <pre><code class="sql">
+              SELECT count(1) FROM
+                (SELECT id FROM product LIMIT 11) p
+            </code></pre>
+            </script>
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ## Process'em all
+
+            * Обрабатываем бакетами
+            * Фильтрация и сортировка по одному полю
+            <pre><code class="sql">
+              SELECT * FROM product
+                WHERE id > 10_000_000
+                ORDER BY id
+                LIMIT 1000
+            </code></pre>
+            </script>
+          </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            ## Full Text Index
+
+            * Сложность поиска терма - O(1)
+            * Wildcard запросы
+            * Поиск по фразе
+            * Минимальный размер
+
             <!--
                 Размер индекса очень важен, так как улучшает использование дискового кеша.
                 Процессоры реально быстрые - раскодировать данные в памяти может оказаться бестрее, чем скопировать их.
@@ -75,7 +176,7 @@ ordinals = ["doc1", "doc2", "doc3"]
             <script type="text/template">
               ## Frequency & Positions
 
-              * Скоринг
+              * Ранжирование
               * Поиск по фразе
 
               <pre><code class="python">
@@ -86,6 +187,9 @@ index["name"] = {
 }
 ordinals = ["doc1", "doc2", "doc3"]
               </code></pre>
+              <!--
+                  Храним частоту и позиции отдельно от doc ordinals
+                -->
             </script>
           </section>
           <section data-markdown>
@@ -111,24 +215,23 @@ doc_values["status"] = {
             <script type="text/template">
               ## Term vectors
 
-              * Инвертрованный индекс для каждого документа
-              * Хранит частоту терма, позиции, смещения в тексте
+              * Inverted index для каждого документа
+              * Частота терма, позиции, смещения в тексте
               * Используется для подсветки
 
-              <pre><code class="python">
-vectors = {
-    0: {"name": {
+              <pre><code class="python">vectors["name"] = {
+    0: {
         "brown": (1, [2], [[4, 9]]),
         "fox": (1, [3], [[10, 13]]),
         "the": (1, [1], [[0, 3]]),
-    }},
-    1: {"name": {
+    },
+    1: {
         "brown": (1, [2], [[4, 9]]),
         "the": (1, [1], [[0, 3]]),
-    }},
-    2: {"name": {
+    },
+    2: {
         "the": (1, [1, 2], [[0, 3], [4, 7]]),
-    }},
+    },
 }
               </code></pre>
             </script>
@@ -147,7 +250,7 @@ vectors = {
         <section>
           <section data-markdown>
             <script type="text/template">
-              ## Compress Postings List
+              ## Postings List
             </script>
           </section>
           <section data-markdown>
@@ -159,8 +262,8 @@ vectors = {
                   [2, 6, 1, 1, 17, 8, 27]
               </code></pre>
 
-              Variable Integers - старший бит байта кодирует есть ли продолжение.
-              Закодированный Integer занимает от 1 до 5 байт.
+              * Variable Integers - старший бит кодирует есть ли продолжение
+              * Integer занимает от 1 до 5 байт
 
               Минусы:
 
@@ -172,6 +275,8 @@ vectors = {
           <section data-markdown>
             <script type="text/template">
               ### Frame of Reference
+
+              * Упаковывем блоки используя Delta-encoding + Bit packing
 
               <pre><code class="python">
                 [2, 8, 9, 10, 27, 35, 62]
@@ -248,10 +353,14 @@ vectors = {
             <script type="text/template">
               ### Roaring Bitmaps
 
+              1. Разбиваем на пары: (N / 16, N % 16)
+              2. Группируем в блоки по первому значению
+              3. Упаковываем наиболее оптимальным способом
+
               <pre><code class="python">
                 [2, 8, 9, 10, 12, 35, 62]
                 [(0, 2), (0, 8), (0, 9), (0, 10), (0, 12), (2, 3), (3, 14)]
-                [(0, 0b0001_0111_0000_0100), (1,), (2, [3]), (3, [14])]
+                [(0, 0b0001_0111_0000_0100), (), (2, [3]), (3, [14])]
               </code></pre>
             </script>
           </section>
@@ -281,21 +390,43 @@ vectors = {
               ![FST](images/numericFST.png)
             </script>
           </section>
+        </section>
 
+        <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Numeric Fields
+            ## Numeric Fields
+          </section>
+          <section data-markdown>
+            ### Ancient times
 
-              * Используют префиксное дерево - Trie
+            * У нас же есть FST
+            * Числа тоже строки!
+            * Let's sort them: 10, 12, 2, 35, 8
+            * Let's fix that: 002, 008, 010, 012, 035
+            * Lucene это сделает за вас
+          </section>
+          <section data-markdown>
+            ### Industrial revolution
 
-              ![Trie](images/trie.png)
+            * Префиксное дерево - Trie
+            * Каждый узел хранит ссылку на Postings List
 
-              <pre>
-                423 &lt;= price &lt;= 642
+            ![Trie](images/trie.png)
 
-                5 | 44 | 63 | 423 | 641 | 642
-              </pre>
+            <script "text/template">
+            <pre>
+              423 &lt;= price &lt;= 642
+
+              5 | 44 | 63 | 423 | 641 | 642
+            </pre>
             </script>
+          </section>
+          <section data-markdown>
+            ## New wave
+
+            * Block KD Tree
+            * Единая структура для чисел, точек в многомерном пространстве, IPv6 адресов
+            * Binary tree & B+ tree
           </section>
         </section>
 
@@ -306,21 +437,19 @@ vectors = {
 
               Кодеки в Lucene - это плагины
 
-              <pre><code class="python">
-def writerConfig = new IndexWriterConfig(new StandardAnalyzer())
+              <pre><code class="groovy">def writerConfig = new IndexWriterConfig(
+    new StandardAnalyzer())
 writerConfig.setUseCompoundFile(false)
 writerConfig.setCodec(new SimpleTextCodec())
-
 def writer = new IndexWriter(dir, writerConfig)
-
 def doc = new Document()
 doc.add(new StringField('id', '1', Field.Store.YES))
 doc.add(new IntField('status', 1, Field.Store.NO))
 doc.add(new NumericDocValuesField('status', 1))
-doc.add(new TextField('name', 'the brown fox', Field.Store.NO))
+doc.add(new TextField(
+    'name', 'the brown fox', Field.Store.NO))
 writer.addDocument(doc)
 // add another documents ...
-
 writer.close()
               </code></pre>
             </script>
@@ -329,8 +458,7 @@ writer.close()
             <script type="text/template">
               ## Codecs
 
-              <pre><code class="bash">
-$ cat data/_0.pst
+              <pre><code class="bash">$ cat data/_0.pst
 ...
 field name
   term brown
@@ -416,13 +544,52 @@ field name
           </section>
           <section data-markdown>
             <script type="text/template">
-              ## Normalization
+              ## Stemming
 
               * Snowball - алгоритмический стеммер
               * Hunspell - медленно
-              * Pymorphy2 - быстро и точно
+              * Словарь - быстро и точно (используем словари из pymorphy2)
             </script>
           </section>
+        </section>
+
+        <section>
+          <section data-markdown>
+            ## Elasticsearch
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ### Meta fields
+
+            * *_index* - виртуальное поле
+            * *_type*, *_id* - тип и идентификатор документа
+            * *_uid* - `"_type#_id"` (doc_values, stored)
+            * *_source* - json документа
+            * *_all* - все-в-одном
+            * *_field_names* - список названий полей
+            * *_routing* - определяет шард в который попадет документ
+            * *_parent* - связь с родительским документом
+            </script>
+          </section>
+          <section data-markdown>
+            ### Dynamic & Schemaless?
+
+            **string** - Either a date field (if the value passes date detection),
+            a double or long field (if the value passes numeric detection) or
+            a text field, with a keyword sub-field.
+
+            * Отключаем автоматическое создание индексов:
+            ```bash
+            $ echo 'action.auto_create_index: false' \
+            >> elasticsearch.yml
+            ```
+
+            * Отключаем динамическую схему:
+            ```bash
+            $ curl -XPOST 'localhost:9200/test' -d '---
+            settings.index.mapper.dynamic: false'
+            ```
+        </section>
         </section>
       </div>
     </div>
