@@ -280,7 +280,7 @@ doc_values["status"] = {
 
               <pre><code class="python">
                 [2, 8, 9, 10, 27, 35, 62]
-                (6, 2, [0, 6, 1, 1, 17, 8, 27])
+                (6, [2, 6, 1, 1, 17, 8, 27])
               </code></pre>
 
               * Фиксированный размер
@@ -293,7 +293,7 @@ doc_values["status"] = {
 
               <pre><code class="python">
                 [2, 8, 9, 10, 27, 35, 62]
-                (3, 2, [0, 6, 1, 1]), (5, 17, [0, 8, 27])
+                (3, [2, 6, 1, 1]), (5, [17, 8, 27])
               </code></pre>
 
               * Блок состоит из 256 значений
@@ -569,10 +569,11 @@ field name
             * *_field_names* - список названий полей
             * *_routing* - определяет шард в который попадет документ
             * *_parent* - связь с родительским документом
+            * *_version* - для Optimistic Concurrency Control
             </script>
           </section>
           <section data-markdown>
-            ### Dynamic & Schemaless?
+            ### Dynamic &amp; Schemaless?
 
             **string** - Either a date field (if the value passes date detection),
             a double or long field (if the value passes numeric detection) or
@@ -589,7 +590,20 @@ field name
             $ curl -XPOST 'localhost:9200/test' -d '---
             settings.index.mapper.dynamic: false'
             ```
-        </section>
+          </section>
+          <section data-markdown>
+            ### Distributed Lucene
+
+            Эй кластер, 10 документов для 2-й страницы:
+
+            1. Сервер на который пришел запрос. Эй шарды, 20 документов мне от каждого:
+               * Получают список документов
+               * *heapq.nlargest(20)*
+
+            2. Так, 100 хитов от 5 шардов:
+               * *kmerge*! *slice[10:20]*!
+               * Шарды, а ну документы для этих 10
+          </section>
         </section>
       </div>
     </div>
@@ -601,7 +615,7 @@ field name
       // https://github.com/hakimel/reveal.js#configuration
       Reveal.initialize({
         controls: true,
-	progress: true,
+        progress: true,
         history: true,
         center: true,
         transition: 'slide', // none/fade/slide/convex/concave/zoom
