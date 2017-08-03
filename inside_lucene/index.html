@@ -60,66 +60,61 @@
             ![xid wraparound](images/xid_wraparound.png)
           </section>
           <section data-markdown>
-            <script type="text/template">
             ## ACID
 
             Каждая запись проверяется на "видимость":
 
-            <pre><code class="c">
-/*
- * ((Xmin == my-transaction &&
- *		(Xmax is null
- *		 [|| Xmax != my-transaction)])
- * ||
- *
- * (Xmin is committed &&
- *		(Xmax is null ||
- *			(Xmax != my-transaction &&
- *			 Xmax is not committed)))
- */
-            </code></pre>
-            </script>
+            ```c
+            /*
+            * ((Xmin == my-transaction &&
+            *		(Xmax is null
+            *		 [|| Xmax != my-transaction)])
+            * ||
+            *
+            * (Xmin is committed &&
+            *		(Xmax is null ||
+            *			(Xmax != my-transaction &&
+            *			 Xmax is not committed)))
+            */
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
             ## Slow SQL
 
-            <pre><code class="sql">
-              SELECT count(1) FROM product
-            </code></pre>
-            <pre><code class="sql">
-              SELECT * FROM product OFFSET 10_000_000 LIMIT 10
-            </code></pre>
-            <pre><code class="sql">
-              SELECT * FROM product ORDER BY random() LIMIT 10
-            </code></pre>
+            ```sql
+            SELECT count(1) FROM product
+            ```
+            ```sql
+            SELECT * FROM product OFFSET 10_000_000 LIMIT 10
+            ```
+            ```sql
+            SELECT * FROM product ORDER BY random() LIMIT 10
+            ```
             </script>
           </section>
           <section data-markdown>
-            <script type="text/template">
             ## Pagination
 
             * Ограничиваем глубину пагинации
             * Определяем только наличие следующей страницы
-            <pre><code class="sql">
-              SELECT count(1) FROM
-                (SELECT id FROM product LIMIT 11) p
-            </code></pre>
-            </script>
+
+            ```sql
+            SELECT count(1) FROM
+              (SELECT id FROM product LIMIT 11) p
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
             ## Process'em all
 
             * Обрабатываем бакетами
             * Фильтрация и сортировка по одному полю
-            <pre><code class="sql">
-              SELECT * FROM product
-                WHERE id > 10_000_000
-                ORDER BY id
-                LIMIT 1000
-            </code></pre>
-            </script>
+
+            ```sql
+            SELECT * FROM product
+              WHERE id > 10_000_000
+              ORDER BY id
+              LIMIT 1000
+            ```
           </section>
         </section>
 
@@ -142,175 +137,156 @@
         </section>
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Inverted Index
-              <pre><code class="python">
-docs = [
-    {"id": "doc1", "status": 2, "name": "the brown fox"},
-    {"id": "doc2", "status": 0, "name": "the brown"},
-    {"id": "doc3", "name": "the the"},
-]
-index["name"] = {
-    "brown": ["doc1", "doc2"],
-    "fox": ["doc1"],
-    "the": ["doc1", "doc2", "doc3"],
-}
-              </code></pre>
-            </script>
+            ## Inverted Index
+            ```python
+            docs = [
+                {"id": "doc1", "status": 2, "name": "the brown fox"},
+                {"id": "doc2", "status": 0, "name": "the brown"},
+                {"id": "doc3", "name": "the the"},
+            ]
+            index["name"] = {
+                "brown": ["doc1", "doc2"],
+                "fox": ["doc1"],
+                "the": ["doc1", "doc2", "doc3"],
+            }
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Document Ordinals
+            ## Document Ordinals
 
-              <pre><code class="python">
-index["name"] = {
-    "brown": [0, 1],
-    "fox": [0],
-    "the": [0, 1, 2],
-}
-ordinals = ["doc1", "doc2", "doc3"]
-              </code></pre>
-            </script>
+            ```python
+            index["name"] = {
+                "brown": [0, 1],
+                "fox": [0],
+                "the": [0, 1, 2],
+            }
+            ordinals = ["doc1", "doc2", "doc3"]
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Frequency & Positions
+            ## Frequency & Positions
 
-              * Ранжирование
-              * Поиск по фразе
+            * Ранжирование
+            * Поиск по фразе
 
-              <pre><code class="python">
-index["name"] = {
-    "brown": ([0, 1], [1, 1], [[1], [1]]),
-    "fox": ([0], [1], [[2]]),
-    "the": ([0, 1, 2], [1, 1, 2], [[0], [0], [0, 1]])
-}
-ordinals = ["doc1", "doc2", "doc3"]
-              </code></pre>
-              <!--
-                  Храним частоту и позиции отдельно от doc ordinals
-                -->
-            </script>
+            ```python
+            index["name"] = {
+                "brown": ([0, 1], [1, 1], [[1], [1]]),
+                "fox": ([0], [1], [[2]]),
+                "the": ([0, 1, 2], [1, 1, 2], [[0], [0], [0, 1]])
+            }
+            ordinals = ["doc1", "doc2", "doc3"]
+            ```
+
+            <!--
+                Храним частоту и позиции отдельно от doc ordinals
+              -->
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Uninverted index
+            ## Uninverted index
 
-              * Сортировка
-              * Скрипты
-              * Агрегации
+            * Сортировка
+            * Скрипты
+            * Агрегации
 
-              Раньше FieldCache индекс загружался в память
+            Раньше FieldCache индекс загружался в память
 
-              <pre><code class="python">
-doc_values["status"] = {
-    0: 2,
-    1: 0,
-    2: None,
-}
-              </code></pre>
-            </script>
+            ```python
+            doc_values["status"] = {
+                0: 2,
+                1: 0,
+                2: None,
+            }
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Term vectors
+            ## Term vectors
 
-              * Inverted index для каждого документа
-              * Частота терма, позиции, смещения в тексте
-              * Используется для подсветки
+            * Inverted index для каждого документа
+            * Частота терма, позиции, смещения в тексте
+            * Используется для подсветки
 
-              <pre><code class="python">vectors["name"] = {
-    0: {
-        "brown": (1, [2], [[4, 9]]),
-        "fox": (1, [3], [[10, 13]]),
-        "the": (1, [1], [[0, 3]]),
-    },
-    1: {
-        "brown": (1, [2], [[4, 9]]),
-        "the": (1, [1], [[0, 3]]),
-    },
-    2: {
-        "the": (1, [1, 2], [[0, 3], [4, 7]]),
-    },
-}
-              </code></pre>
-            </script>
+            ```python
+            vectors["name"] = {
+                0: {
+                    "brown": (1, [2], [[4, 9]]),
+                    "fox": (1, [3], [[10, 13]]),
+                    "the": (1, [1], [[0, 3]]),
+                },
+                1: {
+                    "brown": (1, [2], [[4, 9]]),
+                    "the": (1, [1], [[0, 3]]),
+                },
+                2: {
+                    "the": (1, [1, 2], [[0, 3], [4, 7]]),
+                },
+            }
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Stored
+            ## Stored
 
-              * Оригинальное значение поля
-              * Сжимается LZ4 или GZIP блоками по 16Кб
-              * Распаковывается весь блок
-            </script>
+            * Оригинальное значение поля
+            * Сжимается LZ4 или GZIP блоками по 16Кб
+            * Распаковывается весь блок
           </section>
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Postings List
-            </script>
+            ## Postings List
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Delta + VInt
+            ### Delta + VInt
 
-              <pre><code class="python">
-                  [2, 8, 9, 10, 27, 35, 62]
-                  [2, 6, 1, 1, 17, 8, 27]
-              </code></pre>
+            ```python
+            [2, 8, 9, 10, 27, 35, 62]
+            [2, 6, 1, 1, 17, 8, 27]
+            ```
 
-              * Variable Integers - старший бит кодирует есть ли продолжение
-              * Integer занимает от 1 до 5 байт
+            * Variable Integers - старший бит кодирует есть ли продолжение
+            * Integer занимает от 1 до 5 байт
 
-              Минусы:
+            Минусы:
 
-              * Плохо работает с предсказателем переходов
-              * Минимальный размер - 1 байт
-              * Нельзя раскодировать произвольное значение
-            </script>
+            * Плохо работает с предсказателем переходов
+            * Минимальный размер - 1 байт
+            * Нельзя раскодировать произвольное значение
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Frame of Reference
+            ### Frame of Reference
 
-              * Упаковывем блоки используя Delta-encoding + Bit packing
+            * Упаковывем блоки используя Delta-encoding + Bit packing
 
-              <pre><code class="python">
-                [2, 8, 9, 10, 27, 35, 62]
-                (6, [2, 6, 1, 1, 17, 8, 27])
-              </code></pre>
+            ```python
+            [2, 8, 9, 10, 27, 35, 62]
+            (6, [2, 6, 1, 1, 17, 8, 27])
+            ```
 
-              * Фиксированный размер
-              * Единственное большое значение увеличивает размер
-            </script>
+            * Фиксированный размер
+            * Единственное большое значение увеличивает размер
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Patched Frame of Reference
+            ### Patched Frame of Reference
 
-              <pre><code class="python">
-                [2, 8, 9, 10, 27, 35, 62]
-                (3, [2, 6, 1, 1]), (5, [17, 8, 27])
-              </code></pre>
+            ```python
+            [2, 8, 9, 10, 27, 35, 62]
+            (3, [2, 6, 1, 1]), (5, [17, 8, 27])
+            ```
 
-              * Блок состоит из 256 значений
-              * Большие значения влияют только на один блок
-            </script>
+            * Блок состоит из 256 значений
+            * Большие значения влияют только на один блок
           </section>
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Filter Cache
+            ## Filter Cache
 
-              * Должны ускорять выполнение часто используемых фильтров
-              * Ключ - это пара (filter, segment)
-              * Степень сжатия не так важна - скорость важнее
-            </script>
+            * Должны ускорять выполнение часто используемых фильтров
+            * Ключ - это пара (filter, segment)
+            * Степень сжатия не так важна - скорость важнее
+
             <!--
                 Я здесь написал "должны", так как не обязательно они будут ускорять.
                 Важно кешировать действительно часто используемые фильтры, иначе
@@ -322,73 +298,60 @@ doc_values["status"] = {
               -->
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Sorted Integer
+            ### Sorted Integer
 
-              * Самый простой способ
-              * 1 миллион документов занимает 4Мб
-              * Нужно что-то более эфективное по памяти
-            </script>
+            * Самый простой способ
+            * 1 миллион документов занимает 4Мб
+            * Нужно что-то более эфективное по памяти
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Bitmaps
+            ### Bitmaps
 
-              * Лучший способ для "плотных" фильтров
-              * 1 миллион документов занимает 125Кб
-              * Неэфективен для сильно разреженых фильтров
-            </script>
+            * Лучший способ для "плотных" фильтров
+            * 1 миллион документов занимает 125Кб
+            * Неэфективен для сильно разреженых фильтров
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Roaring Bitmaps
+            ### Roaring Bitmaps
 
-              * Взял лучшее из обоих способов
-              * Разбивает на блоки по 16 старшим битам
-              * Внутри блока сохраняет только 16 младших бит
-              * Если в блоке меньше 4096 значений использует массив, иначе bitmap
-            </script>
+            * Взял лучшее из обоих способов
+            * Разбивает на блоки по 16 старшим битам
+            * Внутри блока сохраняет только 16 младших бит
+            * Если в блоке меньше 4096 значений использует массив, иначе bitmap
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ### Roaring Bitmaps
+            ### Roaring Bitmaps
 
-              1. Разбиваем на пары: (N / 16, N % 16)
-              2. Группируем в блоки по первому значению
-              3. Упаковываем наиболее оптимальным способом
+            1. Разбиваем на пары: (N / 16, N % 16)
+            2. Группируем в блоки по первому значению
+            3. Упаковываем наиболее оптимальным способом
 
-              <pre><code class="python">
-                [2, 8, 9, 10, 12, 35, 62]
-                [(0, 2), (0, 8), (0, 9), (0, 10), (0, 12), (2, 3), (3, 14)]
-                [(0, 0b0001_0111_0000_0100), (), (2, [3]), (3, [14])]
-              </code></pre>
-            </script>
+            ```python
+            [2, 8, 9, 10, 12, 35, 62]
+            [(0, 2), (0, 8), (0, 9), (0, 10), (0, 12), (2, 3), (3, 14)]
+            [(0, 0b0001_0111_0000_0100), (), (2, [3]), (3, [14])]
+            ```
           </section>
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Finite State Transducer
+            ## Finite State Transducer
 
-              * Нахождение по ключу за O(1), зависит только от длинны ключа
-              * Поиск ключей по префиксу
-              * Отличное сжатие для естественных языков
-
-            </script>
+            * Нахождение по ключу за O(1), зависит только от длинны ключа
+            * Поиск ключей по префиксу
+            * Отличное сжатие для естественных языков
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Finite State Transducer
+            ## Finite State Transducer
 
-              <pre>
-                0: mop    3: star
-                1: moth   4: stop
-                2: pop    5: top
-              </pre>
+            ```
+            0: mop    3: star
+            1: moth   4: stop
+            2: pop    5: top
+            ```
 
-              ![FST](images/numericFST.png)
-            </script>
+            ![FST](images/numericFST.png)
           </section>
         </section>
 
@@ -413,13 +376,12 @@ doc_values["status"] = {
 
             ![Trie](images/trie.png)
 
-            <script "text/template">
-            <pre>
-              423 &lt;= price &lt;= 642
+            ```txt
+            423 &lt;= price &lt;= 642
 
-              5 | 44 | 63 | 423 | 641 | 642
+            5 | 44 | 63 | 423 | 641 | 642
+            ```
             </pre>
-            </script>
           </section>
           <section data-markdown>
             ## New wave
@@ -432,73 +394,67 @@ doc_values["status"] = {
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Codecs
+            ## Codecs
 
-              Кодеки в Lucene - это плагины
+            Кодеки в Lucene - это плагины
 
-              <pre><code class="groovy">def writerConfig = new IndexWriterConfig(
-    new StandardAnalyzer())
-writerConfig.setUseCompoundFile(false)
-writerConfig.setCodec(new SimpleTextCodec())
-def writer = new IndexWriter(dir, writerConfig)
-def doc = new Document()
-doc.add(new StringField('id', '1', Field.Store.YES))
-doc.add(new IntField('status', 1, Field.Store.NO))
-doc.add(new NumericDocValuesField('status', 1))
-doc.add(new TextField(
-    'name', 'the brown fox', Field.Store.NO))
-writer.addDocument(doc)
-// add another documents ...
-writer.close()
-              </code></pre>
-            </script>
+            ```groovy
+            def writerConfig = new IndexWriterConfig(
+                new StandardAnalyzer())
+            writerConfig.setUseCompoundFile(false)
+            writerConfig.setCodec(new SimpleTextCodec())
+            def writer = new IndexWriter(dir, writerConfig)
+            def doc = new Document()
+            doc.add(new StringField('id', '1', Field.Store.YES))
+            doc.add(new IntField('status', 1, Field.Store.NO))
+            doc.add(new NumericDocValuesField('status', 1))
+            doc.add(new TextField(
+                'name', 'the brown fox', Field.Store.NO))
+            writer.addDocument(doc)
+            // add another documents ...
+            writer.close()
+            ```
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Codecs
+            ## Codecs
 
-              <pre><code class="bash">$ cat data/_0.pst
-...
-field name
-  term brown
-    doc 0
-      freq 1
-      pos 1
-    doc 1
-      freq 1
-      pos 1
-  term fox
-    doc 0
-      freq 1
-      pos 0
-              </code></pre>
-            </script>
+            ```bash
+            $ cat data/_0.pst
+            ...
+            field name
+              term brown
+                doc 0
+                  freq 1
+                  pos 1
+                doc 1
+                  freq 1
+                  pos 1
+              term fox
+                doc 0
+                  freq 1
+                  pos 0
+            ```
           </section>
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Segments
+            ## Segments
 
-              * Немутабельныe
-              * Документ нельзя удалить
-              * Merges
-              * Compound segments для уменьшения кол-ва открытых файлов
-            </script>
+            * Немутабельныe
+            * Документ нельзя удалить
+            * Merges
+            * Compound segments для уменьшения кол-ва открытых файлов
+          </section>
+          <section data-markdown>
+            ## Live Docs
+
+            * Единственная мутабельная часть сегмента
+            * Внутри Bitmap с пропусками
           </section>
           <section data-markdown>
             <script type="text/template">
-              ## Live Docs
-
-              * Единственная мутабельная часть сегмента
-              * Внутри Bitmap с пропусками
-            </script>
-          </section>
-          <section data-markdown>
-            <script type="text/template">
-              ## Merging Segments
+            ## Merging Segments
 
               <iframe width="560" height="315" src="https://www.youtube.com/embed/YOklKW9LJNY" frameborder="0" allowfullscreen></iframe>
             </script>
@@ -507,49 +463,41 @@ field name
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Ranking &amp; Similarity
+            ## Ranking &amp; Similarity
 
-              * TF - частота терма в документе
-              * tf(t, d) = sqrt(frequency)
-              * IDF - инвертированная частота терма в корпусе
-              * idf(t) = 1 + log(numDocs / (docFreq + 1))
-              * norm = 1 / sqrt(numTerms)
-              * score ~ tf * idf * norm
-              * BM25 - тонкая настройка
-            </script>
+            * TF - частота терма в документе
+            * tf(t, d) = sqrt(frequency)
+            * IDF - инвертированная частота терма в корпусе
+            * idf(t) = 1 + log(numDocs / (docFreq + 1))
+            * norm = 1 / sqrt(numTerms)
+            * score ~ tf * idf * norm
+            * BM25 - тонкая настройка
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Vector Space Model
+            ## Vector Space Model
 
-              ![Vector](images/vector_query.png)
-            </script>
+            ![Vector](images/vector_query.png)
           </section>
         </section>
 
         <section>
           <section data-markdown>
-            <script type="text/template">
-              ## Text processing
+            ## Text processing
 
-              * Фильтрация символов (например удаление html)
-              * Разбиение на токены
-              * Морфология (стемминг)
-              * Синонимы
-              * Разделение/объединение (wi fi = wifi = WiFi = wi-fi)
-              * Нижний регистр
-              * Машинное обучение
-            </script>
+            * Фильтрация символов (например удаление html)
+            * Разбиение на токены
+            * Морфология (стемминг)
+            * Синонимы
+            * Разделение/объединение (wi fi = wifi = WiFi = wi-fi)
+            * Нижний регистр
+            * Машинное обучение
           </section>
           <section data-markdown>
-            <script type="text/template">
-              ## Stemming
+            ## Stemming
 
-              * Snowball - алгоритмический стеммер
-              * Hunspell - медленно
-              * Словарь - быстро и точно (используем словари из pymorphy2)
-            </script>
+            * Snowball - алгоритмический стеммер
+            * Hunspell - медленно
+            * Словарь - быстро и точно (используем словари из pymorphy2)
           </section>
         </section>
 
@@ -558,7 +506,6 @@ field name
             ## Elasticsearch
           </section>
           <section data-markdown>
-            <script type="text/template">
             ### Meta fields
 
             * *_index* - виртуальное поле
@@ -570,7 +517,6 @@ field name
             * *_routing* - определяет шард в который попадет документ
             * *_parent* - связь с родительским документом
             * *_version* - для Optimistic Concurrency Control
-            </script>
           </section>
           <section data-markdown>
             ### Dynamic &amp; Schemaless?
