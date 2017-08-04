@@ -11,6 +11,10 @@
       .reveal p {
         text-align: left;
       }
+      .reveal code {
+        background-color: #3f3f3f;
+        font-size: 0.9em;
+      }
       .reveal ul {
         display: block;
         margin-left: 2em;
@@ -465,13 +469,14 @@
           <section data-markdown>
             ## Ranking &amp; Similarity
 
-            * TF - частота терма в документе
-            * tf(t, d) = sqrt(frequency)
-            * IDF - инвертированная частота терма в корпусе
-            * idf(t) = 1 + log(numDocs / (docFreq + 1))
-            * norm = 1 / sqrt(numTerms)
-            * score ~ tf * idf * norm
-            * BM25 - тонкая настройка
+            * `TF` - частота терма в документе
+            * `tf(t, d) = sqrt(frequency)`
+            * `IDF` - инвертированная частота терма в корпусе
+            * `idf(t) = 1 + log(numDocs/(docFreq+1))`
+            * `norm = 1 / sqrt(numTerms)`
+            * `score ~ tf * idf^2 * norm`
+
+            `BM25` - тонкая настройка
           </section>
           <section data-markdown>
             ## Vector Space Model
@@ -508,15 +513,15 @@
           <section data-markdown>
             ### Meta fields
 
-            * *_index* - виртуальное поле
-            * *_type*, *_id* - тип и идентификатор документа
-            * *_uid* - `"_type#_id"` (doc_values, stored)
-            * *_source* - json документа
-            * *_all* - все-в-одном
-            * *_field_names* - список названий полей
-            * *_routing* - определяет шард в который попадет документ
-            * *_parent* - связь с родительским документом
-            * *_version* - для Optimistic Concurrency Control
+            * `_index` - виртуальное поле
+            * `_type`, `_id` - тип и идентификатор документа
+            * `_uid` - `"_type#_id"` (doc_values, stored)
+            * `_source` - json документа
+            * `_all` - все-в-одном
+            * `_field_names` - список названий полей
+            * `_routing` - определяет шард в который попадет документ
+            * `_parent` - связь с родительским документом
+            * `_version` - для Optimistic Concurrency Control
           </section>
           <section data-markdown>
             ### Dynamic &amp; Schemaless?
