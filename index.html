@@ -94,6 +94,9 @@
             ```sql
             SELECT * FROM product ORDER BY random() LIMIT 10
             ```
+            ```sql
+            SELECT count(DISTINCT company_id) FROM product
+            ```
             </script>
           </section>
           <section data-markdown>
@@ -390,9 +393,14 @@
           <section data-markdown>
             ## New wave
 
-            * Block KD Tree
+            * BKD Tree
             * Единая структура для чисел, точек в многомерном пространстве, IPv6 адресов
             * Binary tree & B+ tree
+          </section>
+          <section data-markdown>
+            ## BKD Tree
+
+            ![BKD Tree](images/bkd_tree.png)
           </section>
         </section>
 
@@ -458,30 +466,34 @@
           </section>
           <section data-markdown>
             <script type="text/template">
-            ## Merging Segments
+              ## Merging Segments
 
-              <iframe width="560" height="315" src="https://www.youtube.com/embed/YOklKW9LJNY" frameborder="0" allowfullscreen></iframe>
+              <iframe width="560" height="315"
+                      src="https://www.youtube.com/embed/YOklKW9LJNY"
+                      frameborder="0" allowfullscreen></iframe>
             </script>
           </section>
         </section>
 
         <section>
           <section data-markdown>
+            ## Vector Space Model
+
+            ![Vector](images/vector_query.png)
+          </section>
+          <section data-markdown>
             ## Ranking &amp; Similarity
 
+            Для каждого терма:
+
             * `TF` - частота терма в документе
-            * `tf(t, d) = sqrt(frequency)`
+            * `tf(t in d) = sqrt(frequency)`
             * `IDF` - инвертированная частота терма в корпусе
             * `idf(t) = 1 + log(numDocs/(docFreq+1))`
             * `norm = 1 / sqrt(numTerms)`
             * `score ~ tf * idf^2 * norm`
 
             `BM25` - тонкая настройка
-          </section>
-          <section data-markdown>
-            ## Vector Space Model
-
-            ![Vector](images/vector_query.png)
           </section>
         </section>
 
@@ -509,6 +521,58 @@
         <section>
           <section data-markdown>
             ## Elasticsearch
+          </section>
+          <section data-markdown>
+            ### Distributed Search
+
+            ![Distributed Search](images/distributed_query.png)
+          </section>
+          <section data-markdown>
+            ### Distributed Search
+
+            Эй кластер, 10 документов для 2-й страницы:
+
+            1. Сервер на который пришел запрос. Эй шарды, 20 документов мне от каждого:
+               * Получают список документов
+               * *heapq.nlargest(20)*
+
+            2. Так, 100 хитов от 5 шардов:
+               * *kmerge*! *slice[10:20]*!
+               * Шарды, а ну документы для этих 10
+          </section>
+          <section data-markdown>
+            <script type="text/template">
+            ### Distributed Search
+
+            `IDF` отличается на разных шардах
+
+            <ol start="0">
+              <li>
+                Получаем из каждого шарда `numDocs` и `docFreq`,
+                вычисляем глобальный `IDF` и используем его для
+                выполнения запроса
+              </li>
+            </script>
+          </section>
+          <section data-markdown>
+            ### Query execution phases
+
+            1. Фильтрация
+            2. Ранжирование
+            2. Агрегации
+            3. Пост-фильтрация `post_filter`
+          </section>
+          <section data-markdown>
+            ### Aggregations
+
+            * **Bucket** - набор документов, могут быть вложенными,
+              бакет имеет одну метрику: `doc_count`.
+
+              `terms` &amp; `significant_terms`, `filter` &amp; `filters`,
+              `histogram`, `range`, `adjacency_matric`,
+              `sampler` &amp; `diversified_sampler`
+            * **Metric**: `min`, `max`, `sum`, `avg`, `value_count`, `cardinality`,
+              `percentiles` &amp; `percentile_ranks`, `top_hits`
           </section>
           <section data-markdown>
             ### Meta fields
@@ -541,19 +605,6 @@
             $ curl -XPOST 'localhost:9200/test' -d '---
             settings.index.mapper.dynamic: false'
             ```
-          </section>
-          <section data-markdown>
-            ### Distributed Lucene
-
-            Эй кластер, 10 документов для 2-й страницы:
-
-            1. Сервер на который пришел запрос. Эй шарды, 20 документов мне от каждого:
-               * Получают список документов
-               * *heapq.nlargest(20)*
-
-            2. Так, 100 хитов от 5 шардов:
-               * *kmerge*! *slice[10:20]*!
-               * Шарды, а ну документы для этих 10
           </section>
         </section>
       </div>

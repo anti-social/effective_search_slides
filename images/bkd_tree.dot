@@ -1,0 +1,16 @@
+graph {
+  bnode_root [ label = "X - (80,10)" ]
+  bnode_l1_0 [ label = "Y - (50,30)" ]
+  bnode_l1_1 [ label = "Y - (130,25)" ]
+  node0 [ shape = record, label ="<a> X | <f0> (0,10) | <f1> (10,5) | <f2> (20,20) | <f3> (70,2)" ];
+  node1 [ shape = record, label ="<a> X | <f0> (30,80) | <f1> (40,50) | <f2> (50,30) | <f3> (60,75)" ];
+  node2 [ shape = record, label ="<a> X | <f0> (80,10) | <f1> (90,5) | <f2> (100,20) | <f3> (170,2)" ];
+  node3 [ shape = record, label ="<a> X | <f0> (110,80) | <f1> (120,50) | <f2> (130,25)" ];
+
+	bnode_root -- bnode_l1_0;
+  bnode_root -- bnode_l1_1;
+  bnode_l1_0 -- node0:f1;
+  bnode_l1_0 -- node1:f1;
+  bnode_l1_1 -- node2:f1;
+  bnode_l1_1 -- node3:f1;
+}
